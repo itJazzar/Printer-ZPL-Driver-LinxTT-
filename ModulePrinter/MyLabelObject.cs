@@ -15,7 +15,9 @@ namespace LabelDesignerV2
 {
     public class MyLabelObject
     {
-        public double px_in_mm = 150 / 25.4;
+        //public double px_in_mm = 150 / 25.4;
+        public static double px_in_mm = Screen.PrimaryScreen.Bounds.Width / (Screen.PrimaryScreen.Bounds.Width * 0.0393701); //Height
+        
         public int width;
         public int height;
         public int x;

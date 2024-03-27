@@ -56,7 +56,6 @@ namespace LabelDesignerV2
         }
         public string GetZPLIIFormattedString()
         {
-
             return labelOnWork.toDFF();
         }
         public string PutZPL(List<Tuple<string, string>> data)

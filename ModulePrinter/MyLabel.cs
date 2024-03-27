@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Printing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -13,7 +14,9 @@ namespace LabelDesignerV2
 
     public class MyLabel
     {
-        public static double px_in_mm = 150 / 25.4;
+        //public static double px_in_mm = 150 / 25.4;
+        //public static double px_in_mm = PrinterSettings.DefaultPageSettings.PrinterResolution.X / 25.4; // X или Y, в зависимости от направления печати
+        public static double px_in_mm = Screen.PrimaryScreen.Bounds.Width / (Screen.PrimaryScreen.Bounds.Width * 0.0393701); //Height
 
         public int width;
         public int height;

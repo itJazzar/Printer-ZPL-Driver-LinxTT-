@@ -14,17 +14,33 @@ using System.Drawing;
 using LabelDesignerV2;
 using System.IO;
 using System.Diagnostics;
-
+using static System.Drawing.Printing.PrinterSettings;
+using System.Net.PeerToPeer;
+//using BinaryKits.Zpl.Label;
+//using BinaryKits.Zpl.Label.Elements;
 
 
 namespace ModulePrinter
 {
-    public class Printer
+    public class TemplateLabel
+    {
+        public string DataMatrix { get; set; } = "0104607112814912215ze6<J\u001d93aoAx";
+        public string EAN13 { get; set; } = "2200008125684";
+        public string EAN128 { get; set; } = "0104610051410244310301256611210605102106050";
+        public string Weight { get; set; } = "7,500 кг";
+        public string WeightSum { get; set; } = "0,000 кг";
+        public string ProductionDate { get; set; } = DateTime.Now.ToShortDateString();
+        public string ExpirationDate { get; set; } = DateTime.Now.ToShortDateString();
+        public string LotNumber { get; set; } = "12345678";
+    }
+
+public class Printer
     {
         public PrinterTypes PrinterType { get; set; }
         public string PrinterIP { get; set; }
         public string PrinterName { get; set; }
         public int PrinterPort { get; set; }
+        public string PrinterSizeName { get; set; }
         public int ConnectionTimeoutMSec { get; set; }
 
         private int _counter;
@@ -47,11 +63,11 @@ namespace ModulePrinter
         private NetworkStream _networkStream;
         private Logger _logger = LogManager.GetCurrentClassLogger();
 
-        private PrintManager printManager;
+        private PrintManager _printManager;
 
-        private List<Tuple<string, string>> arguments = new List<Tuple<string, string>>();
-        public TemplateLabel tempateLabel;
-        static MyLabel _currentLabel;
+        private List<Tuple<string, string>> _arguments = new List<Tuple<string, string>>();
+        public TemplateLabel TemplateLabel = new TemplateLabel();
+
 
         Printer(PrinterTypes printerType = PrinterTypes.LinxTT, int port = 9100)
         {
@@ -80,10 +96,6 @@ namespace ModulePrinter
                 Console.WriteLine("Ошибка при получении списка файлов: " + ex.Message);
                 return new string[0];
             }
-        }
-        public string PrintZPLData()
-        {
-            return "^XA^FO50,50^ADN,36,20^FD!Complex Integration^FS^XZ"; //ZPL Language
         }
 
         public void GetAvailablePaperSizes()
@@ -145,122 +157,33 @@ namespace ModulePrinter
             }
         }
 
-        //public void PrintAggFromDriver(TemplateLabel templateLabel, string printerAgg)
-        //{
-        //    PrintDocument printCode = new PrintDocument
-        //    {
-        //        PrintController = new StandardPrintController(),
-        //        PrinterSettings = new PrinterSettings
-        //        {
-        //            PrinterName = printerAgg
-        //        }
-        //    };
+        public string PrintZPLWithData(List<Tuple<string, string>> data)
+        {
+            return "";
+        }
 
-        //    printCode.PrintPage += (sender, e) =>
-        //    {
-        //        argumentsGroup.Clear();
-        //        argumentsGroup.Add(new Tuple<string, string>("DataMatrix", templateLabel.DataMatrix));
-        //        argumentsGroup.Add(new Tuple<string, string>("EAN128", templateLabel.EAN128));
-        //        argumentsGroup.Add(new Tuple<string, string>("ДатаПроизв", templateLabel.ProductionDate));
-        //        argumentsGroup.Add(new Tuple<string, string>("ДатаГодн", templateLabel.ExpirationDate));
-        //        argumentsGroup.Add(new Tuple<string, string>("Партия", templateLabel.LotNumber));
-
-        //        PrintWithData(argumentsGroup, e.Graphics);
-        //    };
-        //    printCode.DefaultPageSettings.PaperSize = new PaperSize(
-        //        "work",
-        //        (int)Math.Ceiling((labelOnWork.width + 3) * 0.03937007874 * 100),
-        //        (int)Math.Ceiling(labelOnWork.height * 0.03937007874 * 100));
-        //    printCode.Print();
-        //}
-
-
-
-
-
-        //private void PRINT_MY_ASS(object sender, PrintPageEventArgs e)
-        //{
-        //    PrintDocument printCode = new PrintDocument
-        //    {
-        //        PrintController = new StandardPrintController(),
-        //        PrinterSettings = new PrinterSettings
-        //        {
-        //            PrinterName = PrinterName
-        //        }
-        //    };
-        //    printCode.PrintPage += new PrintPageEventHandler(PrintCode_PrintPage);
-        //    printCode.DefaultPageSettings.PaperSize = new PaperSize("work", (int)Math.Ceiling((_currentLabel.width + 3) * 0.03937007874 * 100), (int)Math.Ceiling((_currentLabel.height) * 0.03937007874 * 100));
-
-        //    printCode.Print();
-        //}
-
-        //private void PrintTextPage(object sender, PrintPageEventArgs e)
-        //{
-        //    // Определяем, что нужно напечатать на странице
-        //    string textToPrint = "Complex Integration";
-
-        //    // Определяем шрифт и кисть для текста
-        //    Font font = new Font("Times New Romans", 14);
-        //    Brush brush = Brushes.Black;
-
-        //    // Определяем координаты печати
-        //    float x = e.MarginBounds.Left;
-        //    float y = e.MarginBounds.Top;
-
-        //    // Рисуем текст на странице
-        //    e.Graphics.DrawString(textToPrint, font, brush, x, y);
-        //}
-
-        //private void PrintTextToPdf(Printer printer)
-        //{
-        //    // Создаем новый объект PrintDocument
-        //    PrintDocument printDocument = new PrintDocument();
-
-        //    // Устанавливаем обработчик события PrintPage
-        //    //printDocument.PrintPage += new PrintPageEventHandler(PrintTextPage);
-        //    printDocument.PrintPage += new PrintPageEventHandler(this,);
-
-        //    // Устанавливаем имя принтера
-        //    printDocument.PrinterSettings.PrinterName = PrinterName;
-
-        //    // Вызываем метод для отправки на печать
-        //    printDocument.Print();
-        //}
 
         async static Task Main(string[] args)
         {
 
-            ///Печать через виндовый драйвер, я должнен предоставлять список доступных принтеру размеров
-            ///15х15, 20х20 - подгруппа кастомные, А4 - не кастомные
-
             Printer printer = new Printer(); //параметры по умолчанию
-            printer.PrinterType = PrinterTypes.Driver;
+            printer.PrinterType = PrinterTypes.ZPL;
             //printer.PrinterIP = "192.168.10.110";
             //printer.Counter = 10;
-            printer.PrinterName = "Microsoft Print to PDF";
+            //printer.PrinterName = "Microsoft Print to PDF";
             //printer.PrinterName = "HP Office1";
+            printer.PrinterName = "TSC TE210";
+            //printer.PrinterSizeName = "15x15";
             //printer.Port = 9100;
             printer.ConnectionTimeoutMSec = 1000;
-            printer.FolderPath = @"C:\Users\Public\Labels\новая.ci";
-            string[] templatesLabels = printer.GetFilesInFolder();
+            printer.FolderPath = @"C:\Users\Public\Labels\zpl.ci";
 
-          
-            printer.printManager = new PrintManager(printer.FolderPath);
+            //string[] templatesLabels = printer.GetFilesInFolder();
 
 
+            printer._printManager = new PrintManager(printer.FolderPath);
 
-                     ///public static double px_in_mm = Application.OpenForms[0].DeviceDpi / 25.4; ЗДЕСЬ БЫЛ ЗАТЫК
-
-
-
-            //printer.arguments.Add(new Tuple<string, string>("EAN128", templateLabel.EAN128));
-            //printer.arguments.Add(new Tuple<string, string>("ДатаПроизв", templateLabel.ProductionDate));
-            //printer.arguments.Add(new Tuple<string, string>("ДатаГодн", templateLabel.ExpirationDate));
-            //printer.arguments.Add(new Tuple<string, string>("Партия", templateLabel.LotNumber));
-
-            //Image demoLabel = printer.printManager.labelOnWork.drawEmpty();
-            //Graphics graphics = Graphics.FromImage(demoLabel);
-            //printer.printManager.PrintWithData(printer.arguments, graphics);
+            ///public static double px_in_mm = Application.OpenForms[0].DeviceDpi / 25.4; ЗДЕСЬ БЫЛ ЗАТЫК
 
             PrintDocument printCode = new PrintDocument
             {
@@ -271,22 +194,90 @@ namespace ModulePrinter
                 }
             };
 
+            PrinterSettings printerSettings = printCode.PrinterSettings;
+            PaperSizeCollection paperSizes = printerSettings.PaperSizes;
+
+            // Добавление пользовательских размеров 15x15 мм и 20x20 мм
+            paperSizes.Add(new PaperSize("15x15", 15, 15));
+            paperSizes.Add(new PaperSize("20x20", 20, 20));
+
+            Console.WriteLine($"Выбран принтер: {printer.PrinterName}");
+
+            foreach (PaperSize paperSize in paperSizes)
+            {
+                Console.WriteLine($"Name: {paperSize.PaperName}, Width: {paperSize.Width}, Height: {paperSize.Height}, Type: {paperSize.Kind}");
+            }
+
+
+            PaperSize selectedPaperSize = null;
+            foreach (PaperSize size in paperSizes)
+            {
+                if (size.PaperName == printer.PrinterSizeName)
+                {
+                    selectedPaperSize = size;
+                    break;
+                }
+            }
+
+            if (selectedPaperSize != null)
+            {
+                printerSettings.DefaultPageSettings.PaperSize = selectedPaperSize;
+                Console.WriteLine($"Выбранный размер печати: {selectedPaperSize}");
+            }
+            else
+            {
+                Console.WriteLine($"Заданный размер бумаги {printer.PrinterSizeName} у принтера {printer.PrinterName} не найден.");
+            }
+
             printCode.PrintPage += (s, e) =>
             {
-                printer.arguments = new List<Tuple<string, string>>();
+                printer._arguments = new List<Tuple<string, string>>
+                {
+                    new Tuple<string, string>("DataMatrix", "Zdarova, zaebal"),
+                    new Tuple<string, string>("EAN128", printer.TemplateLabel.EAN128),
+                    new Tuple<string, string>("ДатаПроизв", printer.TemplateLabel.ProductionDate),
+                    new Tuple<string, string>("ДатаГодн", printer.TemplateLabel.ExpirationDate),
+                    new Tuple<string, string>("Вес", printer.TemplateLabel.Weight),
+                    new Tuple<string, string>("Партия", printer.TemplateLabel.LotNumber)
+                };
 
-                printer.arguments.Add(new Tuple<string, string>("DataMatrix", "printer.tempateLabel.DataMatrix"));
+                printCode.DefaultPageSettings.PaperSize = selectedPaperSize;
 
-                //printCode.DefaultPageSettings.PaperSize = new PaperSize("work", (int)Math.Ceiling((_currentLabel.width + 3) * 0.03937007874 * 100), (int)Math.Ceiling((_currentLabel.height) * 0.03937007874 * 100));
-
-              
-                printer.printManager.PrintWithData(printer.arguments, e.Graphics);
+                printer._printManager.PrintWithData(printer._arguments, e.Graphics);
             };
 
-            printCode.Print();
+            //printCode.Print();
 
-            //printer.PrintPDF();
-            //printer.PrintTextToPdf();
+            //var elements = new List<ZplElementBase>();
+            ////elements.Add(new ZplBarcode128("CIMarking", 10, 150));
+
+            //var dm = new ZplDataMatrix($"0104607032146742215&FF/w{(char)29}93nLyu", 10, 10, 5, 200, FieldOrientation.Normal);
+
+            //dm.ToZplString();
+            //elements.Add(dm);
+
+            //var renderEngine = new ZplEngine(elements);
+            //var output = renderEngine.ToZplString(new ZplRenderOptions { AddEmptyLineBeforeElementStart = true, });
+
+            //Console.WriteLine(output);
+
+
+
+
+            //Console.WriteLine();
+            //var output = new ZplGraphicBox(100, 100, 100, 100).ToZplString();
+            //Console.WriteLine(output);
+
+            //var output1 = new ZplBarcode128("123ABC", 10, 50).ToZplString();
+            //Console.WriteLine(output1);
+
+            //string result = printer._printManager.GetZPLIIFormattedString();
+            //string res = printer._printManager.PutZPL(printer._arguments);
+
+            //Console.WriteLine(res);
+
+            //Console.WriteLine(result);
+
 
 
 
@@ -304,35 +295,11 @@ namespace ModulePrinter
             //    Console.WriteLine("Не удалось установить соединение с принтером.\n");
             //}
 
+
             //if (printer.PrinterType == PrinterTypes.Driver)
-            //{
 
-
-            //bool printerSet = printer.SetWindowsPrinter();
-
-            //if (printerSet)
-            //{
-            //    Console.WriteLine("printer");
-            //}
-
-
-
-            // printer.GetAvailablePaperSizes();
 
             Console.ReadKey();
         }
-    }
-
-    public class TemplateLabel
-    {
-        public string DataMatrix { get; set; } = "0104607112814912215ze6<J\u001d93aoAx";
-        public string EAN13 { get; set; } = "2200008125684";
-        public string EAN128 { get; set; } = "0104610051410244310301256611210605102106050";
-        public string Weight { get; set; } = "7,000 кг";
-        public string WeightSum { get; set; } = "0,000 кг";
-        public string ProductionDate { get; set; } = DateTime.Now.ToShortDateString();
-        public string ExpirationDate { get; set; } = DateTime.Now.ToShortDateString();
-        public string LotNumber { get; set; } = "12345678";
-
     }
 }
