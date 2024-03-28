@@ -5,6 +5,10 @@ VisualStudioVersion = 17.9.34701.34
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModulePrinter", "ModulePrinter\ModulePrinter.csproj", "{58D57758-E773-4D96-AE85-039AE0FF88E5}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "testzplapp", "..\testzplapp\testzplapp\testzplapp.csproj", "{E4CEEF93-AE09-4B84-955E-0F29F5359C75}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BinaryKits.Zpl.Label", "..\testzplapp\BinaryKits.Zpl.Label\BinaryKits.Zpl.Label.csproj", "{D1631D37-842B-4217-9FC5-B27993273F39}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{58D57758-E773-4D96-AE85-039AE0FF88E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{58D57758-E773-4D96-AE85-039AE0FF88E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{58D57758-E773-4D96-AE85-039AE0FF88E5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E4CEEF93-AE09-4B84-955E-0F29F5359C75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E4CEEF93-AE09-4B84-955E-0F29F5359C75}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E4CEEF93-AE09-4B84-955E-0F29F5359C75}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E4CEEF93-AE09-4B84-955E-0F29F5359C75}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D1631D37-842B-4217-9FC5-B27993273F39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D1631D37-842B-4217-9FC5-B27993273F39}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D1631D37-842B-4217-9FC5-B27993273F39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D1631D37-842B-4217-9FC5-B27993273F39}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

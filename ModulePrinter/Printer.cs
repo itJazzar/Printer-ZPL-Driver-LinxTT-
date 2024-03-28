@@ -16,8 +16,9 @@ using System.IO;
 using System.Diagnostics;
 using static System.Drawing.Printing.PrinterSettings;
 using System.Net.PeerToPeer;
-//using BinaryKits.Zpl.Label;
-//using BinaryKits.Zpl.Label.Elements;
+using BinaryKits.Zpl.Label;
+using BinaryKits.Zpl.Label.Elements;
+using System.Data.SqlTypes;
 
 
 namespace ModulePrinter
@@ -34,7 +35,7 @@ namespace ModulePrinter
         public string LotNumber { get; set; } = "12345678";
     }
 
-public class Printer
+    public class Printer
     {
         public PrinterTypes PrinterType { get; set; }
         public string PrinterIP { get; set; }
@@ -156,10 +157,40 @@ public class Printer
                 return false;
             }
         }
-
-        public string PrintZPLWithData(List<Tuple<string, string>> data)
+        public void PrintZPLWithData(List<Tuple<string, string>> data)
         {
-            return "";
+
+        }
+        public bool SendZplString(string zplString)
+        {
+            if (_tcpClient == null || !_tcpClient.Connected || _networkStream == null)
+            {
+                Console.WriteLine("Принтер не подключен.");
+                return false;
+            }
+
+            try
+            {
+                byte[] data = Encoding.UTF8.GetBytes(zplString);
+                _networkStream.Write(data, 0, data.Length);
+
+                Console.WriteLine("Строка ZPL успешно отправлена на принтер.");
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при отправке строки ZPL на принтер: {ex.Message}");
+                return false;
+            }
+        }
+        public void Dispose()
+        {
+            if (_tcpClient != null && _networkStream != null)
+            {
+                _tcpClient.Dispose();
+                _networkStream.Dispose();
+            }
         }
 
 
@@ -168,13 +199,13 @@ public class Printer
 
             Printer printer = new Printer(); //параметры по умолчанию
             printer.PrinterType = PrinterTypes.ZPL;
-            //printer.PrinterIP = "192.168.10.110";
+            printer.PrinterIP = "192.168.10.136";
             //printer.Counter = 10;
             //printer.PrinterName = "Microsoft Print to PDF";
             //printer.PrinterName = "HP Office1";
             printer.PrinterName = "TSC TE210";
             //printer.PrinterSizeName = "15x15";
-            //printer.Port = 9100;
+            //printer.PrinterPort = 9100;
             printer.ConnectionTimeoutMSec = 1000;
             printer.FolderPath = @"C:\Users\Public\Labels\zpl.ci";
 
@@ -229,37 +260,72 @@ public class Printer
                 Console.WriteLine($"Заданный размер бумаги {printer.PrinterSizeName} у принтера {printer.PrinterName} не найден.");
             }
 
-            printCode.PrintPage += (s, e) =>
+            //printCode.PrintPage += (s, e) =>
+            //{
+            //    printer._arguments = new List<Tuple<string, string>>
+            //    {
+            //            new Tuple<string, string>("DataMatrix", "Zdarova, zaebal"),
+            //            new Tuple<string, string>("EAN128", printer.TemplateLabel.EAN128),
+            //            new Tuple<string, string>("ДатаПроизв", printer.TemplateLabel.ProductionDate),
+            //            new Tuple<string, string>("ДатаГодн", printer.TemplateLabel.ExpirationDate),
+            //            new Tuple<string, string>("Вес", printer.TemplateLabel.Weight),
+            //            new Tuple<string, string>("Партия", printer.TemplateLabel.LotNumber)
+            //    };
+
+            //    printCode.DefaultPageSettings.PaperSize = selectedPaperSize;
+
+            //    printer._printManager.PrintWithData(printer._arguments, e.Graphics);
+            //};
+            //Console.WriteLine("Press SPACEBAR for printing or any other key for exit\n");
+            //while (true)
+            //{
+            //    ConsoleKeyInfo key = Console.ReadKey();
+            //    if (key.Key == ConsoleKey.SPACEBAR)
+            //    {
+            //        printCode.Print();
+            //    }
+            //    else
+            //    {
+            //        break;
+            //    }
+            //}
+
+
+            var elements = new List<ZplElementBase>();
+            var font = new ZplFont(fontWidth: 20, fontHeight: 20);
+            //elements.Add(new ZplBarcode128("CIMarking", 0, 1100));
+            
+            //elements.Add(new ZplTextField("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 0, 0, font));
+
+
+            var dm = new ZplDataMatrix($"0104607032146742215&FF/w{(char)29}93nLyu", 350, 0, 5, 200, FieldOrientation.Normal);
+
+            dm.ToZplString();
+            elements.Add(dm);
+
+            var renderEngine = new ZplEngine(elements);
+            var output = renderEngine.ToZplString(new ZplRenderOptions { AddEmptyLineBeforeElementStart = false, });
+            Console.WriteLine(output);
+
+
+            await printer.Start();
+
+            Console.WriteLine("Press SPACEBAR for printing or any other key for exit\n");
+            while (true)
             {
-                printer._arguments = new List<Tuple<string, string>>
+                ConsoleKeyInfo key = Console.ReadKey();
+                if (key.Key == ConsoleKey.Spacebar)
                 {
-                    new Tuple<string, string>("DataMatrix", "Zdarova, zaebal"),
-                    new Tuple<string, string>("EAN128", printer.TemplateLabel.EAN128),
-                    new Tuple<string, string>("ДатаПроизв", printer.TemplateLabel.ProductionDate),
-                    new Tuple<string, string>("ДатаГодн", printer.TemplateLabel.ExpirationDate),
-                    new Tuple<string, string>("Вес", printer.TemplateLabel.Weight),
-                    new Tuple<string, string>("Партия", printer.TemplateLabel.LotNumber)
-                };
+                    printer.SendZplString(output);
+                }
+                else
+                {
+                    break;
+                }
+            }
+            printer.Dispose();
 
-                printCode.DefaultPageSettings.PaperSize = selectedPaperSize;
 
-                printer._printManager.PrintWithData(printer._arguments, e.Graphics);
-            };
-
-            //printCode.Print();
-
-            //var elements = new List<ZplElementBase>();
-            ////elements.Add(new ZplBarcode128("CIMarking", 10, 150));
-
-            //var dm = new ZplDataMatrix($"0104607032146742215&FF/w{(char)29}93nLyu", 10, 10, 5, 200, FieldOrientation.Normal);
-
-            //dm.ToZplString();
-            //elements.Add(dm);
-
-            //var renderEngine = new ZplEngine(elements);
-            //var output = renderEngine.ToZplString(new ZplRenderOptions { AddEmptyLineBeforeElementStart = true, });
-
-            //Console.WriteLine(output);
 
 
 
@@ -281,6 +347,7 @@ public class Printer
 
 
 
+
             //bool isConnected = await printer.Start();
             //if (isConnected && (printer.PrinterType == PrinterTypes.ZPL || printer.PrinterType == PrinterTypes.LinxTT))
             //{
@@ -298,8 +365,6 @@ public class Printer
 
             //if (printer.PrinterType == PrinterTypes.Driver)
 
-
-            Console.ReadKey();
         }
     }
 }
