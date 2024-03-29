@@ -66,6 +66,7 @@ namespace ModulePrinter
 
         private PrintManager _printManager;
 
+
         private List<Tuple<string, string>> _arguments = new List<Tuple<string, string>>();
         public TemplateLabel TemplateLabel = new TemplateLabel();
 
@@ -157,8 +158,150 @@ namespace ModulePrinter
                 return false;
             }
         }
-        public void PrintZPLWithData(List<Tuple<string, string>> data)
+        public void PrintZPLWithData(List<Tuple<string, string>> data, MyLabel label)
         {
+            var font = new ZplFont(fontWidth: 20, fontHeight: 20);
+            var elements = new List<ZplElementBase>();
+            int verticalOffset = 0;
+
+            foreach (Tuple<string, string> tuple in data)
+            {
+
+                switch (tuple.Item1)
+                {
+                    case "DataMatrix":
+                        {
+                            bool dataMatrixAdded = false; // Флаг для отслеживания добавления DataMatrix
+                            foreach (MyLabelObject obj in label.objects)
+                            {
+                                if (tuple.Item1 == obj.specialArgument)
+                                {
+                                    obj.data = tuple.Item2;
+
+                                    if (!dataMatrixAdded) // Проверяем, был ли уже добавлен DataMatrix
+                                    {
+                                        elements.Add(new ZplDataMatrix($"{obj.data}", 350, verticalOffset, 5, 200, FieldOrientation.Normal));
+                                        dataMatrixAdded = true; // Устанавливаем флаг, чтобы избежать дублирования
+                                        verticalOffset += 150;
+                                    }
+                                }
+                            }
+
+                            break;
+                        }
+                    //case "EAN13":
+                    //    {
+                    //        bool ean13Added = false; // Флаг для отслеживания добавления EAN13
+                    //        foreach (MyLabelObject obj in label.objects)
+                    //        {
+                    //            if (tuple.Item1 == obj.specialArgument)
+                    //            {
+                    //                obj.data = tuple.Item2;
+
+                    //                if (!ean13Added)
+                    //                {
+                    //                    elements.Add(new ZplBarcodeEan13($"{obj.data}", 350, 0));
+                    //                    ean13Added = true;
+                    //                }
+                    //            }
+                    //        }
+
+                    //        break;
+                    //    }
+                    //case "EAN128": //дописывать
+                    //    {
+                    //        foreach (MyLabelObject obj in label.objects)
+                    //        {
+                    //            if (tuple.Item1 == obj.specialArgument)
+                    //                obj.data = tuple.Item2;
+
+                    //            elements.Add(new ZplBarcode128($"{obj.data}", 350, 0));
+                    //        }
+
+                    //        break;
+                    //    }
+                    //case "Вес":
+                    //    {
+                    //        foreach (MyLabelObject obj in label.objects)
+                    //        {
+                    //            if (tuple.Item1 == obj.specialArgument)
+                    //                obj.data = tuple.Item2;
+
+                    //            elements.Add(new ZplTextField($"{tuple.Item1}\n{obj.data}", 350, 0, font));
+                    //        }
+                    //        break;
+                    //    }
+                    //case "ВесСумм":
+                    //    {
+                    //        foreach (MyLabelObject obj in label.objects)
+                    //        {
+                    //            if (tuple.Item1 == obj.specialArgument)
+                    //                obj.data = tuple.Item2;
+
+                    //            elements.Add(new ZplTextField($"{tuple.Item1}\n{obj.data}", 350, 0, font));
+                    //        }
+                    //        break;
+                    //    }
+                    case "ДатаПроизв":
+                        {
+                            bool dateProdAdded = false;
+                            foreach (MyLabelObject obj in label.objects)
+                            {
+                                if (tuple.Item1 == obj.specialArgument)
+                                {
+                                    obj.data = tuple.Item2;
+
+                                    if (!dateProdAdded)
+                                    {
+                                        elements.Add(new ZplTextField($"{obj.data}", 350, verticalOffset, font));
+                                        dateProdAdded = true;
+                                        verticalOffset += 150;
+                                    }
+
+                                }
+
+                            }
+                            break;
+                        }
+                        //case "ДатаГодн":
+                        //    {
+                        //        foreach (MyLabelObject obj in label.objects)
+                        //        {
+                        //            if (tuple.Item1 == obj.specialArgument)
+                        //                obj.data = tuple.Item2;
+
+                        //            elements.Add(new ZplTextField($"{tuple.Item1}\n{obj.data}", 350, 0, font));
+                        //        }
+                        //        break;
+                        //    }
+                        //case "ДатаУпак":
+                        //    {
+                        //        foreach (MyLabelObject obj in label.objects)
+                        //        {
+                        //            if (tuple.Item1 == obj.specialArgument)
+                        //                obj.data = tuple.Item2;
+
+                        //            elements.Add(new ZplTextField($"{tuple.Item1}\n{obj.data}", 350, 0, font));
+                        //        }
+                        //        break;
+                        //    }
+                        //case "Партия":
+                        //    {
+                        //        foreach (MyLabelObject obj in label.objects)
+                        //        {
+                        //            if (tuple.Item1 == obj.specialArgument)
+                        //                obj.data = tuple.Item2;
+
+                        //            elements.Add(new ZplTextField($"{tuple.Item1}\n{obj.data}", 350, 0, font));
+                        //        }
+                        //        break;
+                        //    }
+                }
+
+            }
+            var renderEngine = new ZplEngine(elements);
+            var output = renderEngine.ToZplString(new ZplRenderOptions { AddEmptyLineBeforeElementStart = false, });
+            Console.WriteLine(output);
 
         }
         public bool SendZplString(string zplString)
@@ -207,12 +350,20 @@ namespace ModulePrinter
             //printer.PrinterSizeName = "15x15";
             //printer.PrinterPort = 9100;
             printer.ConnectionTimeoutMSec = 1000;
-            printer.FolderPath = @"C:\Users\Public\Labels\zpl.ci";
+            printer.FolderPath = @"C:\Users\Public\Labels\max.ci";
 
             //string[] templatesLabels = printer.GetFilesInFolder();
 
 
             printer._printManager = new PrintManager(printer.FolderPath);
+            MyLabel label = MyLabel.FromFile(printer.FolderPath);
+
+            //var list = label.ToTupleList();
+            //foreach (var item in list)
+            //{
+            //    Console.WriteLine(item);
+            //}
+
 
             ///public static double px_in_mm = Application.OpenForms[0].DeviceDpi / 25.4; ЗДЕСЬ БЫЛ ЗАТЫК
 
@@ -262,15 +413,16 @@ namespace ModulePrinter
 
             //printCode.PrintPage += (s, e) =>
             //{
-            //    printer._arguments = new List<Tuple<string, string>>
-            //    {
-            //            new Tuple<string, string>("DataMatrix", "Zdarova, zaebal"),
-            //            new Tuple<string, string>("EAN128", printer.TemplateLabel.EAN128),
-            //            new Tuple<string, string>("ДатаПроизв", printer.TemplateLabel.ProductionDate),
-            //            new Tuple<string, string>("ДатаГодн", printer.TemplateLabel.ExpirationDate),
-            //            new Tuple<string, string>("Вес", printer.TemplateLabel.Weight),
-            //            new Tuple<string, string>("Партия", printer.TemplateLabel.LotNumber)
-            //    };
+            printer._arguments = new List<Tuple<string, string>>
+                {
+                        new Tuple<string, string>("DataMatrix", "Zdarova, zaebal"),
+                        //new Tuple<string, string>("EAN128", printer.TemplateLabel.EAN128),
+                        //new Tuple<string, string>("EAN13", printer.TemplateLabel.EAN13),
+                        new Tuple<string, string>("ДатаПроизв", printer.TemplateLabel.ProductionDate),
+                        //new Tuple<string, string>("ДатаГодн", printer.TemplateLabel.ExpirationDate),
+                        //new Tuple<string, string>("Вес", printer.TemplateLabel.Weight),
+                        //new Tuple<string, string>("Партия", printer.TemplateLabel.LotNumber)
+                };
 
             //    printCode.DefaultPageSettings.PaperSize = selectedPaperSize;
 
@@ -291,39 +443,41 @@ namespace ModulePrinter
             //}
 
 
-            var elements = new List<ZplElementBase>();
-            var font = new ZplFont(fontWidth: 20, fontHeight: 20);
+            printer.PrintZPLWithData(printer._arguments, label);
+
+
+           
             //elements.Add(new ZplBarcode128("CIMarking", 0, 1100));
-            
+
             //elements.Add(new ZplTextField("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 0, 0, font));
 
 
-            var dm = new ZplDataMatrix($"0104607032146742215&FF/w{(char)29}93nLyu", 350, 0, 5, 200, FieldOrientation.Normal);
+            //var dm = new ZplDataMatrix($"0104607032146742215&FF/w{(char)29}93nLyu", 350, 0, 5, 200, FieldOrientation.Normal); //350 - офсет по Х для корректной печати
 
-            dm.ToZplString();
-            elements.Add(dm);
+            //dm.ToZplString();
+            //elements.Add(dm);
 
-            var renderEngine = new ZplEngine(elements);
-            var output = renderEngine.ToZplString(new ZplRenderOptions { AddEmptyLineBeforeElementStart = false, });
-            Console.WriteLine(output);
+            //var renderEngine = new ZplEngine(elements);
+            //var output = renderEngine.ToZplString(new ZplRenderOptions { AddEmptyLineBeforeElementStart = false, });
+            //Console.WriteLine(output);
 
 
-            await printer.Start();
+            //await printer.Start();
 
-            Console.WriteLine("Press SPACEBAR for printing or any other key for exit\n");
-            while (true)
-            {
-                ConsoleKeyInfo key = Console.ReadKey();
-                if (key.Key == ConsoleKey.Spacebar)
-                {
-                    printer.SendZplString(output);
-                }
-                else
-                {
-                    break;
-                }
-            }
-            printer.Dispose();
+            //Console.WriteLine("Press SPACEBAR for printing or any other key for exit\n");
+            //while (true)
+            //{
+            //    ConsoleKeyInfo key = Console.ReadKey();
+            //    if (key.Key == ConsoleKey.Spacebar)
+            //    {
+            //        printer.SendZplString(output);
+            //    }
+            //    else
+            //    {
+            //        break;
+            //    }
+            //}
+            //printer.Dispose();
 
 
 
@@ -364,7 +518,8 @@ namespace ModulePrinter
 
 
             //if (printer.PrinterType == PrinterTypes.Driver)
-
+         
+            Console.ReadKey();
         }
     }
 }

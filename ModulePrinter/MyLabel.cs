@@ -351,5 +351,42 @@ namespace LabelDesignerV2
             result += "^XZ";
             return result;
         }
+
+        public List<Tuple<string, string>> ToTupleList()
+        {
+            var tupleList = new List<Tuple<string, string>>();
+
+            foreach (var item in objects)
+            {
+                if (item is MyText)
+                {
+                    var textItem = (MyText)item;
+                    tupleList.Add(new Tuple<string, string>("TEXT_FIELD", textItem.specialArgument));
+                    tupleList.Add(new Tuple<string, string>("LOCATION", $"{textItem.x} {textItem.y}"));
+                    tupleList.Add(new Tuple<string, string>("SIZE", $"{textItem.width} {textItem.height}"));
+                    tupleList.Add(new Tuple<string, string>("CONTENT", textItem.data.Replace("\r\n", "%%%")));
+                    tupleList.Add(new Tuple<string, string>("FONT_SIZE", textItem.fontSize.ToString()));
+                    tupleList.Add(new Tuple<string, string>("FONT_STYLE", textItem.fontStyle.ToString()));
+                }
+                else if (item is MyBarcode)
+                {
+                    var barcodeItem = (MyBarcode)item;
+                    tupleList.Add(new Tuple<string, string>("BARCODE", barcodeItem.specialArgument));
+                    tupleList.Add(new Tuple<string, string>("LOCATION", $"{barcodeItem.x} {barcodeItem.y}"));
+                    tupleList.Add(new Tuple<string, string>("SIZE", $"{barcodeItem.width} {barcodeItem.height}"));
+                    tupleList.Add(new Tuple<string, string>("FONT_SIZE", barcodeItem.fontSize.ToString()));
+                }               
+                else if (item is MyRectangle)
+                {
+                    var rectangleItem = (MyRectangle)item;
+                    tupleList.Add(new Tuple<string, string>("RECTANGLE", rectangleItem.bold.ToString()));
+                    tupleList.Add(new Tuple<string, string>("LOCATION", $"{rectangleItem.x} {rectangleItem.y}"));
+                    tupleList.Add(new Tuple<string, string>("SIZE", $"{rectangleItem.width} {rectangleItem.height}"));
+                }
+            }
+
+            return tupleList;
+        }
     }
+
 }
