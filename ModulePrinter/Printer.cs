@@ -171,14 +171,14 @@ namespace ModulePrinter
                 {
                     case "DataMatrix":
                         {
-                            bool dataMatrixAdded = false; // Флаг для отслеживания добавления DataMatrix
+                            bool dataMatrixAdded = false;
                             foreach (MyLabelObject obj in label.objects)
                             {
                                 if (tuple.Item1 == obj.specialArgument)
                                 {
                                     obj.data = tuple.Item2;
 
-                                    if (!dataMatrixAdded) // Проверяем, был ли уже добавлен DataMatrix
+                                    if (!dataMatrixAdded)
                                     {
                                         elements.Add(new ZplDataMatrix($"{obj.data}", 350, verticalOffset, 5, 200, FieldOrientation.Normal));
                                         dataMatrixAdded = true; // Устанавливаем флаг, чтобы избежать дублирования
@@ -189,59 +189,88 @@ namespace ModulePrinter
 
                             break;
                         }
-                    //case "EAN13":
-                    //    {
-                    //        bool ean13Added = false; // Флаг для отслеживания добавления EAN13
-                    //        foreach (MyLabelObject obj in label.objects)
-                    //        {
-                    //            if (tuple.Item1 == obj.specialArgument)
-                    //            {
-                    //                obj.data = tuple.Item2;
+                    case "EAN13":
+                        {
+                            bool ean13Added = false; // Флаг для отслеживания добавления EAN13
+                            foreach (MyLabelObject obj in label.objects)
+                            {
+                                if (tuple.Item1 == obj.specialArgument)
+                                {
+                                    obj.data = tuple.Item2;
 
-                    //                if (!ean13Added)
-                    //                {
-                    //                    elements.Add(new ZplBarcodeEan13($"{obj.data}", 350, 0));
-                    //                    ean13Added = true;
-                    //                }
-                    //            }
-                    //        }
+                                    if (!ean13Added)
+                                    {
+                                        elements.Add(new ZplBarcodeEan13($"{obj.data}", 350, verticalOffset));
+                                        ean13Added = true;
+                                        verticalOffset += 150;
+                                    }
+                                }
+                            }
 
-                    //        break;
-                    //    }
-                    //case "EAN128": //дописывать
-                    //    {
-                    //        foreach (MyLabelObject obj in label.objects)
-                    //        {
-                    //            if (tuple.Item1 == obj.specialArgument)
-                    //                obj.data = tuple.Item2;
+                            break;
+                        }
+                    case "EAN128":
+                        {
+                            bool ean128Added = false;
+                            foreach (MyLabelObject obj in label.objects)
+                            {
+                                if (tuple.Item1 == obj.specialArgument)
+                                {
+                                    obj.data = tuple.Item2;
 
-                    //            elements.Add(new ZplBarcode128($"{obj.data}", 350, 0));
-                    //        }
+                                    if (!ean128Added)
+                                    {
+                                        elements.Add(new ZplBarcode128($"{obj.data}", 350, verticalOffset));
+                                        ean128Added = true;
+                                        verticalOffset += 150;
 
-                    //        break;
-                    //    }
-                    //case "Вес":
-                    //    {
-                    //        foreach (MyLabelObject obj in label.objects)
-                    //        {
-                    //            if (tuple.Item1 == obj.specialArgument)
-                    //                obj.data = tuple.Item2;
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    case "Вес":
+                        {
+                            bool weightAdded = false;
+                            foreach (MyLabelObject obj in label.objects)
+                            {
+                                if (tuple.Item1 == obj.specialArgument)
+                                {
+                                    obj.data = tuple.Item2;
 
-                    //            elements.Add(new ZplTextField($"{tuple.Item1}\n{obj.data}", 350, 0, font));
-                    //        }
-                    //        break;
-                    //    }
-                    //case "ВесСумм":
-                    //    {
-                    //        foreach (MyLabelObject obj in label.objects)
-                    //        {
-                    //            if (tuple.Item1 == obj.specialArgument)
-                    //                obj.data = tuple.Item2;
+                                    if (!weightAdded)
+                                    {
+                                        elements.Add(new ZplTextField($"{obj.data}", 350, verticalOffset, font));
+                                        weightAdded = true;
+                                        verticalOffset += 150;
+                                    }
 
-                    //            elements.Add(new ZplTextField($"{tuple.Item1}\n{obj.data}", 350, 0, font));
-                    //        }
-                    //        break;
-                    //    }
+                                }
+
+                            }
+                            break;
+                        }
+                    case "ВесСумм":
+                        {
+                            bool weightSumAdded = false;
+                            foreach (MyLabelObject obj in label.objects)
+                            {
+                                if (tuple.Item1 == obj.specialArgument)
+                                {
+                                    obj.data = tuple.Item2;
+
+                                    if (!weightSumAdded)
+                                    {
+                                        elements.Add(new ZplTextField($"{obj.data}", 350, verticalOffset, font));
+                                        weightSumAdded = true;
+                                        verticalOffset += 150;
+                                    }
+
+                                }
+
+                            }
+                            break;
+                        }
                     case "ДатаПроизв":
                         {
                             bool dateProdAdded = false;
@@ -263,42 +292,73 @@ namespace ModulePrinter
                             }
                             break;
                         }
-                        //case "ДатаГодн":
-                        //    {
-                        //        foreach (MyLabelObject obj in label.objects)
-                        //        {
-                        //            if (tuple.Item1 == obj.specialArgument)
-                        //                obj.data = tuple.Item2;
+                    case "ДатаГодн":
+                        {
+                            bool dateEpirAdded = false;
+                            foreach (MyLabelObject obj in label.objects)
+                            {
+                                if (tuple.Item1 == obj.specialArgument)
+                                {
+                                    obj.data = tuple.Item2;
 
-                        //            elements.Add(new ZplTextField($"{tuple.Item1}\n{obj.data}", 350, 0, font));
-                        //        }
-                        //        break;
-                        //    }
-                        //case "ДатаУпак":
-                        //    {
-                        //        foreach (MyLabelObject obj in label.objects)
-                        //        {
-                        //            if (tuple.Item1 == obj.specialArgument)
-                        //                obj.data = tuple.Item2;
+                                    if (!dateEpirAdded)
+                                    {
+                                        elements.Add(new ZplTextField($"{obj.data}", 350, verticalOffset, font));
+                                        dateEpirAdded = true;
+                                        verticalOffset += 150;
+                                    }
 
-                        //            elements.Add(new ZplTextField($"{tuple.Item1}\n{obj.data}", 350, 0, font));
-                        //        }
-                        //        break;
-                        //    }
-                        //case "Партия":
-                        //    {
-                        //        foreach (MyLabelObject obj in label.objects)
-                        //        {
-                        //            if (tuple.Item1 == obj.specialArgument)
-                        //                obj.data = tuple.Item2;
+                                }
 
-                        //            elements.Add(new ZplTextField($"{tuple.Item1}\n{obj.data}", 350, 0, font));
-                        //        }
-                        //        break;
-                        //    }
+                            }
+                            break;
+                        }
+                    case "ДатаУпак":
+                        {
+                            bool datePackingAdded = false;
+                            foreach (MyLabelObject obj in label.objects)
+                            {
+                                if (tuple.Item1 == obj.specialArgument)
+                                {
+                                    obj.data = tuple.Item2;
+
+                                    if (!datePackingAdded)
+                                    {
+                                        elements.Add(new ZplTextField($"{obj.data}", 350, verticalOffset, font));
+                                        datePackingAdded = true;
+                                        verticalOffset += 150;
+                                    }
+
+                                }
+
+                            }
+                            break;
+                        }
+                    case "Партия":
+                        {
+                            bool partyAdded = false;
+                            foreach (MyLabelObject obj in label.objects)
+                            {
+                                if (tuple.Item1 == obj.specialArgument)
+                                {
+                                    obj.data = tuple.Item2;
+
+                                    if (!partyAdded)
+                                    {
+                                        elements.Add(new ZplTextField($"{obj.data}", 350, verticalOffset, font));
+                                        partyAdded = true;
+                                        verticalOffset += 150;
+                                    }
+
+                                }
+
+                            }
+                            break;
+                        }
                 }
 
             }
+
             var renderEngine = new ZplEngine(elements);
             var output = renderEngine.ToZplString(new ZplRenderOptions { AddEmptyLineBeforeElementStart = false, });
             Console.WriteLine(output);
@@ -415,13 +475,13 @@ namespace ModulePrinter
             //{
             printer._arguments = new List<Tuple<string, string>>
                 {
-                        new Tuple<string, string>("DataMatrix", "Zdarova, zaebal"),
-                        //new Tuple<string, string>("EAN128", printer.TemplateLabel.EAN128),
-                        //new Tuple<string, string>("EAN13", printer.TemplateLabel.EAN13),
+                        new Tuple<string, string>("DataMatrix", printer.TemplateLabel.DataMatrix),
+                        new Tuple<string, string>("EAN128", printer.TemplateLabel.EAN128),
+                        new Tuple<string, string>("EAN13", printer.TemplateLabel.EAN13),
                         new Tuple<string, string>("ДатаПроизв", printer.TemplateLabel.ProductionDate),
-                        //new Tuple<string, string>("ДатаГодн", printer.TemplateLabel.ExpirationDate),
-                        //new Tuple<string, string>("Вес", printer.TemplateLabel.Weight),
-                        //new Tuple<string, string>("Партия", printer.TemplateLabel.LotNumber)
+                        new Tuple<string, string>("ДатаГодн", printer.TemplateLabel.ExpirationDate),
+                        new Tuple<string, string>("Вес", printer.TemplateLabel.Weight),
+                        new Tuple<string, string>("Партия", printer.TemplateLabel.LotNumber)
                 };
 
             //    printCode.DefaultPageSettings.PaperSize = selectedPaperSize;
@@ -446,7 +506,7 @@ namespace ModulePrinter
             printer.PrintZPLWithData(printer._arguments, label);
 
 
-           
+
             //elements.Add(new ZplBarcode128("CIMarking", 0, 1100));
 
             //elements.Add(new ZplTextField("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 0, 0, font));
@@ -518,7 +578,7 @@ namespace ModulePrinter
 
 
             //if (printer.PrinterType == PrinterTypes.Driver)
-         
+
             Console.ReadKey();
         }
     }
