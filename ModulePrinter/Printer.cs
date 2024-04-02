@@ -32,9 +32,9 @@ namespace ModulePrinter
         public string WeightSum { get; set; } = "0,000 кг";
         public string ProductionDate { get; set; } = DateTime.Now.ToShortDateString();
         public string ExpirationDate { get; set; } = DateTime.Now.ToShortDateString();
+        public string PackingDate { get; set; } = DateTime.Now.ToShortDateString();
         public string LotNumber { get; set; } = "12345678";
     }
-
     public class Printer
     {
         public PrinterTypes PrinterType { get; set; }
@@ -43,7 +43,6 @@ namespace ModulePrinter
         public int PrinterPort { get; set; }
         public string PrinterSizeName { get; set; }
         public int ConnectionTimeoutMSec { get; set; }
-
         private int _counter;
         public int Counter
         {
@@ -59,19 +58,13 @@ namespace ModulePrinter
         public int MinLimitCounter { get; set; }
         public int MaxLimitCounter { get; set; }
         public string FolderPath { get; set; }
-
         private TcpClient _tcpClient;
         private NetworkStream _networkStream;
         private Logger _logger = LogManager.GetCurrentClassLogger();
-
         private PrintManager _printManager;
-
-
-        private List<Tuple<string, string>> _arguments = new List<Tuple<string, string>>();
         public TemplateLabel TemplateLabel = new TemplateLabel();
-
-
-        Printer(PrinterTypes printerType = PrinterTypes.LinxTT, int port = 9100)
+        private List<Tuple<string, string>> _arguments = new List<Tuple<string, string>>();
+        Printer(PrinterTypes printerType = PrinterTypes.Driver, int port = 9100)
         {
             PrinterType = printerType;
             PrinterPort = port;
@@ -99,7 +92,6 @@ namespace ModulePrinter
                 return new string[0];
             }
         }
-
         public void GetAvailablePaperSizes()
         {
             PrintDocument printDoc = new PrintDocument();
@@ -112,7 +104,6 @@ namespace ModulePrinter
                 Console.WriteLine($"Размер бумаги: {paperSize.PaperName}, Ширина: {paperSize.Width}, Высота: {paperSize.Height}, Тип: {paperSize.Kind}");
             }
         }
-
         public async Task<bool> Start()
         {
             if (_tcpClient != null && _tcpClient.Connected)
@@ -158,9 +149,10 @@ namespace ModulePrinter
                 return false;
             }
         }
-        public void PrintZPLWithData(List<Tuple<string, string>> data, MyLabel label)
-        {
-            var font = new ZplFont(fontWidth: 9, fontHeight: 9);
+        public string PrintZPLWithData(List<Tuple<string, string>> data, MyLabel label) //now i need to Draw pictures. My help https://github.com/BinaryKits/BinaryKits.Zpl https://zplprinter.azurewebsites.net/
+        {           
+
+            var font = new ZplFont(fontWidth: 14, fontHeight: 14);
             var elements = new List<ZplElementBase>();
             ZplElementBase elementToAdd = null;
 
@@ -169,24 +161,24 @@ namespace ModulePrinter
                 var key = tuple.Item1;
                 var value = tuple.Item2;
 
-                var labelObject = label.objects.FirstOrDefault(obj => obj.specialArgument == key);
-                if (labelObject != null)
+                var labelObjects = label.objects.Where(obj => obj.specialArgument == key).ToList();
+                foreach (var labelObject in labelObjects)
                 {
                     labelObject.data = value;
 
                     switch (key)
                     {
                         case "DataMatrix":
-                            elementToAdd = new ZplDataMatrix(value, labelObject.x, labelObject.y, labelObject.height, 200, FieldOrientation.Normal);
+                            elementToAdd = new ZplDataMatrix(value, labelObject.x, labelObject.y, 3, 200, FieldOrientation.Normal);
                             break;
                         case "EAN13":
-                            elementToAdd = new ZplBarcodeEan13(value, labelObject.x, labelObject.y, labelObject.height);                      
+                            elementToAdd = new ZplBarcodeEan13(value, labelObject.x, labelObject.y, labelObject.height, 1);
                             break;
                         case "EAN128":
-                            elementToAdd = new ZplBarcode128(value, labelObject.x, labelObject.y, labelObject.height);
+                            elementToAdd = new ZplBarcode128(value, labelObject.x, labelObject.y, labelObject.height, 1);
                             break;
                         default:
-                            elementToAdd = new ZplTextField(value, labelObject.x, labelObject.y, font); 
+                            elementToAdd = new ZplTextField(value, labelObject.x, labelObject.y, font);
                             break;
                     }
 
@@ -195,15 +187,12 @@ namespace ModulePrinter
                         elements.Add(elementToAdd);
                     }
                 }
-                else
-                {
-                    Console.WriteLine($"Label object not found for argument: {key}");
-                }
             }
 
             var renderEngine = new ZplEngine(elements);
-            var output = renderEngine.ToZplString(new ZplRenderOptions { AddEmptyLineBeforeElementStart = false });
-            Console.WriteLine(output);
+            string output = renderEngine.ToZplString(new ZplRenderOptions { AddEmptyLineBeforeElementStart = false, SourcePrintDpi = 203, TargetPrintDpi = 300 });
+
+            return output;
         }
         public bool SendZplString(string zplString)
         {
@@ -228,47 +217,8 @@ namespace ModulePrinter
                 return false;
             }
         }
-        public void Dispose()
+        private void PrintWithDriver(Printer printer, List<Tuple<string, string>> arguments, PrintManager printManager)
         {
-            if (_tcpClient != null && _networkStream != null)
-            {
-                _tcpClient.Dispose();
-                _networkStream.Dispose();
-            }
-        }
-
-
-        async static Task Main(string[] args)
-        {
-
-            Printer printer = new Printer(); //параметры по умолчанию
-            printer.PrinterType = PrinterTypes.ZPL;
-            printer.PrinterIP = "192.168.10.136";
-            //printer.Counter = 10;
-            //printer.PrinterName = "Microsoft Print to PDF";
-            //printer.PrinterName = "HP Office1";
-            printer.PrinterName = "TSC TE210";
-            //printer.PrinterSizeName = "15x15";
-            //printer.PrinterPort = 9100;
-            printer.ConnectionTimeoutMSec = 1000;
-            printer.FolderPath = @"C:\Users\Public\Labels\max.ci";
-
-
-            //string[] templatesLabels = printer.GetFilesInFolder();
-
-
-            printer._printManager = new PrintManager(printer.FolderPath);
-            MyLabel label = MyLabel.FromFile(printer.FolderPath);
-
-            //var list = label.ToTupleList();
-            //foreach (var item in list)
-            //{
-            //    Console.WriteLine(item);
-            //}
-
-
-            ///public static double px_in_mm = Application.OpenForms[0].DeviceDpi / 25.4; ЗДЕСЬ БЫЛ ЗАТЫК
-
             PrintDocument printCode = new PrintDocument
             {
                 PrintController = new StandardPrintController(),
@@ -281,17 +231,13 @@ namespace ModulePrinter
             PrinterSettings printerSettings = printCode.PrinterSettings;
             PaperSizeCollection paperSizes = printerSettings.PaperSizes;
 
-            // Добавление пользовательских размеров 15x15 мм и 20x20 мм
             paperSizes.Add(new PaperSize("15x15", 15, 15));
             paperSizes.Add(new PaperSize("20x20", 20, 20));
-
-            Console.WriteLine($"Выбран принтер: {printer.PrinterName}");
 
             //foreach (PaperSize paperSize in paperSizes)
             //{
             //    Console.WriteLine($"Name: {paperSize.PaperName}, Width: {paperSize.Width}, Height: {paperSize.Height}, Type: {paperSize.Kind}");
             //}
-
 
             PaperSize selectedPaperSize = null;
             foreach (PaperSize size in paperSizes)
@@ -309,12 +255,57 @@ namespace ModulePrinter
             //    Console.WriteLine($"Выбранный размер печати: {selectedPaperSize}");
             //}
             //else
-            //{
             //    Console.WriteLine($"Заданный размер бумаги {printer.PrinterSizeName} у принтера {printer.PrinterName} не найден.");
-            //}
 
-            //printCode.PrintPage += (s, e) =>
-            //{
+            // Привязка обработчика события печати
+            printCode.PrintPage += (s, e) => PrintPageHandler(s, e, arguments, printer, selectedPaperSize, printCode);
+
+            printCode.Print();
+            Console.WriteLine("Печать успешно завершена");
+        }
+        private void PrintPageHandler(object sender, PrintPageEventArgs e, List<Tuple<string, string>> arguments, Printer printer, PaperSize selectedPaperSize, PrintDocument printCode)
+        {
+            printer._arguments = arguments;
+            printCode.DefaultPageSettings.PaperSize = selectedPaperSize;
+            printer._printManager.PrintWithData(arguments, e.Graphics);
+        }
+        public void PrintDataToLinxTT()
+        {
+            //Code
+        }
+        public void Dispose()
+        {
+            if (_tcpClient != null && _networkStream != null)
+            {
+                _tcpClient.Dispose();
+                _networkStream.Dispose();
+            }
+        }
+
+
+        async static Task Main(string[] args)
+        {
+            Printer printer = new Printer(); //параметры по умолчанию
+            printer.PrinterType = PrinterTypes.ZPL;
+            //printer.PrinterIP = "192.168.10.136";
+            //printer.Counter = 10;
+            printer.PrinterName = "Microsoft Print to PDF";
+            //printer.PrinterName = "HP Office1";
+            //printer.PrinterName = "TSC TE210";
+            printer.PrinterSizeName = "15x15";
+            //printer.PrinterPort = 9100;
+            printer.ConnectionTimeoutMSec = 1000;
+            printer.FolderPath = @"C:\Users\Public\Labels\3 DM + 1 EAN13.ci";
+
+            printer._printManager = new PrintManager(printer.FolderPath);
+            MyLabel label = MyLabel.FromFile(printer.FolderPath);
+
+            Console.WriteLine($"Выбран принтер: {printer.PrinterName}");
+
+
+ 
+            ///public static double px_in_mm = Application.OpenForms[0].DeviceDpi / 25.4; ЗДЕСЬ БЫЛ ЗАТЫК
+
 
 
             printer._arguments = new List<Tuple<string, string>>
@@ -324,108 +315,59 @@ namespace ModulePrinter
                         new Tuple<string, string>("EAN13", printer.TemplateLabel.EAN13),
                         new Tuple<string, string>("ДатаПроизв", printer.TemplateLabel.ProductionDate),
                         new Tuple<string, string>("ДатаГодн", printer.TemplateLabel.ExpirationDate),
+                        new Tuple<string, string>("ДатаУпак", printer.TemplateLabel.PackingDate),
                         new Tuple<string, string>("Вес", printer.TemplateLabel.Weight),
-                        new Tuple<string, string>("Партия", printer.TemplateLabel.LotNumber)
+                        new Tuple<string, string>("Партия", printer.TemplateLabel.LotNumber),
+                        new Tuple<string, string>("Нет", "фальшивка")
                 };
 
 
-            //    printCode.DefaultPageSettings.PaperSize = selectedPaperSize;
+            if (printer.PrinterType == PrinterTypes.Driver)
+            {
+                printer.PrintWithDriver(printer, printer._arguments, printer._printManager);
+            }
 
-            //    printer._printManager.PrintWithData(printer._arguments, e.Graphics);
-            //};
-
-            printer.PrintZPLWithData(printer._arguments, label);
-            //Console.WriteLine("Press SPACEBAR for printing or any other key for exit\n");
-            //while (true)
-            //{
-            //    ConsoleKeyInfo key = Console.ReadKey();
-            //    if (key.Key == ConsoleKey.SPACEBAR)
-            //    {
-            //        printCode.Print();
-            //    }
-            //    else
-            //    {
-            //        break;
-            //    }
-            //}
-
-
-
-
-
-            //elements.Add(new ZplBarcode128("CIMarking", 0, 1100));
-
-            //elements.Add(new ZplTextField("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 0, 0, font));
-
-
-            //var dm = new ZplDataMatrix($"0104607032146742215&FF/w{(char)29}93nLyu", 350, 0, 5, 200, FieldOrientation.Normal); //350 - офсет по Х для корректной печати
-
-            //dm.ToZplString();
-            //elements.Add(dm);
-
-            //var renderEngine = new ZplEngine(elements);
-            //var output = renderEngine.ToZplString(new ZplRenderOptions { AddEmptyLineBeforeElementStart = false, });
-            //Console.WriteLine(output);
-
-
-            //await printer.Start();
-
-            //Console.WriteLine("Press SPACEBAR for printing or any other key for exit\n");
+            //Console.WriteLine("Press SPACEBAR for printing to Driver or any other key for exit\n");
             //while (true)
             //{
             //    ConsoleKeyInfo key = Console.ReadKey();
             //    if (key.Key == ConsoleKey.Spacebar)
             //    {
-            //        printer.SendZplString(output);
+            //        printer.PrintWithDriver(printer, printer._arguments, printer._printManager);
             //    }
             //    else
             //    {
             //        break;
             //    }
             //}
-            //printer.Dispose();
 
-
-
-
-
-
-            //Console.WriteLine();
-            //var output = new ZplGraphicBox(100, 100, 100, 100).ToZplString();
-            //Console.WriteLine(output);
-
-            //var output1 = new ZplBarcode128("123ABC", 10, 50).ToZplString();
-            //Console.WriteLine(output1);
-
-            //string result = printer._printManager.GetZPLIIFormattedString();
-            //string res = printer._printManager.PutZPL(printer._arguments);
-
-            //Console.WriteLine(res);
-
-            //Console.WriteLine(result);
-
-
+            if (printer.PrinterType == PrinterTypes.ZPL)
+            {
+                string zplText = printer.PrintZPLWithData(printer._arguments, label);
+                Console.WriteLine(zplText);
+            }
 
 
 
             //bool isConnected = await printer.Start();
             //if (isConnected && (printer.PrinterType == PrinterTypes.ZPL || printer.PrinterType == PrinterTypes.LinxTT))
             //{
-            //    Console.WriteLine("Соединение с принтером установлено.");
-
-            //    string data = printer.PrintZPLData();
-            //    Console.WriteLine($"Полученная информация: {data}");
+            //    Console.WriteLine("Press SPACEBAR for printing to ZPL or any other key for exit\n");
+            //    while (true)
+            //    {
+            //        ConsoleKeyInfo key = Console.ReadKey();
+            //        if (key.Key == ConsoleKey.Spacebar)
+            //        {
+            //            printer.SendZplString(zplText);
+            //        }
+            //        else
+            //        {
+            //            break;
+            //        }
+            //    }
 
             //}
-            //else
-            //{
-            //    Console.WriteLine("Не удалось установить соединение с принтером.\n");
-            //}
 
-
-            //if (printer.PrinterType == PrinterTypes.Driver)
-
-            Console.ReadKey();
         }
     }
 }
