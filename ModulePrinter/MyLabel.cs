@@ -20,6 +20,8 @@ namespace LabelDesignerV2
 
         public int width;
         public int height;
+        public int fontSize; //?
+        public string source; //?
 
         public List<MyLabelObject> objects = new List<MyLabelObject>();
 
@@ -97,14 +99,14 @@ namespace LabelDesignerV2
                             // FONT SIZE
                             curr_string = sr.ReadLine();
                             index_st = curr_string.IndexOf(' ') + 1;
-                            int font_size = Int32.Parse(curr_string.Substring(index_st));
+                            fontSize = Int32.Parse(curr_string.Substring(index_st));
                             // FONT STYLE
                             curr_string = sr.ReadLine();
                             index_st = curr_string.IndexOf(' ') + 1;
                             string font_style = curr_string.Substring(index_st);
 
                             myLabel.counterTextBoxes++;
-                            MyText newText = new MyText(font_size, width, height, X, Y, "textfield" + myLabel.counterTextBoxes.ToString(), type, text);
+                            MyText newText = new MyText(fontSize, width, height, X, Y, "textfield" + myLabel.counterTextBoxes.ToString(), type, text);
                             if (font_style == "Regular")
                                 newText.fontStyle = FontStyle.Regular;
                             else
@@ -178,7 +180,7 @@ namespace LabelDesignerV2
                             // SOURCE
                             curr_string = sr.ReadLine();
                             index_st = curr_string.IndexOf(' ') + 1;
-                            string source = curr_string.Substring(index_st);
+                            source = curr_string.Substring(index_st);
 
                             myLabel.counterPictures++;
                             MyPicture newPicture = new MyPicture(width, height, X, Y, "picture" + myLabel.counterPictures.ToString(), "НЕТ", source);

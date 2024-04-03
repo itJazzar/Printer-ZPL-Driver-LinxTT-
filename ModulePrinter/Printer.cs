@@ -19,6 +19,10 @@ using System.Net.PeerToPeer;
 using BinaryKits.Zpl.Label;
 using BinaryKits.Zpl.Label.Elements;
 using System.Data.SqlTypes;
+using System.Runtime.InteropServices;
+using System.ComponentModel;
+using System.Threading;
+using System.Windows.Forms;
 
 
 namespace ModulePrinter
@@ -34,6 +38,105 @@ namespace ModulePrinter
         public string ExpirationDate { get; set; } = DateTime.Now.ToShortDateString();
         public string PackingDate { get; set; } = DateTime.Now.ToShortDateString();
         public string LotNumber { get; set; } = "12345678";
+    }
+    static class WindowsClipboard
+    {
+        public static void SetText(string text)
+        {
+            OpenClipboard();
+
+            EmptyClipboard();
+            IntPtr hGlobal = default;
+            try
+            {
+                var bytes = (text.Length + 1) * 2;
+                hGlobal = Marshal.AllocHGlobal(bytes);
+
+                if (hGlobal == default)
+                {
+                    ThrowWin32();
+                }
+
+                var target = GlobalLock(hGlobal);
+
+                if (target == default)
+                {
+                    ThrowWin32();
+                }
+
+                try
+                {
+                    Marshal.Copy(text.ToCharArray(), 0, target, text.Length);
+                }
+                finally
+                {
+                    GlobalUnlock(target);
+                }
+
+                if (SetClipboardData(cfUnicodeText, hGlobal) == default)
+                {
+                    ThrowWin32();
+                }
+
+                hGlobal = default;
+            }
+            finally
+            {
+                if (hGlobal != default)
+                {
+                    Marshal.FreeHGlobal(hGlobal);
+                }
+
+                CloseClipboard();
+            }
+        }
+
+        public static void OpenClipboard()
+        {
+            var num = 10;
+            while (true)
+            {
+                if (OpenClipboard(default))
+                {
+                    break;
+                }
+
+                if (--num == 0)
+                {
+                    ThrowWin32();
+                }
+
+                Thread.Sleep(100);
+            }
+        }
+
+        const uint cfUnicodeText = 13;
+
+        static void ThrowWin32()
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error());
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern IntPtr GlobalLock(IntPtr hMem);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool GlobalUnlock(IntPtr hMem);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool OpenClipboard(IntPtr hWndNewOwner);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool CloseClipboard();
+
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern IntPtr SetClipboardData(uint uFormat, IntPtr data);
+
+        [DllImport("user32.dll")]
+        static extern bool EmptyClipboard();
     }
     public class Printer
     {
@@ -58,10 +161,12 @@ namespace ModulePrinter
         public int MinLimitCounter { get; set; }
         public int MaxLimitCounter { get; set; }
         public string FolderPath { get; set; }
+        //public string ImagePath { get; set; }
         private TcpClient _tcpClient;
         private NetworkStream _networkStream;
         private Logger _logger = LogManager.GetCurrentClassLogger();
         private PrintManager _printManager;
+        private MyText myText;
         public TemplateLabel TemplateLabel = new TemplateLabel();
         private List<Tuple<string, string>> _arguments = new List<Tuple<string, string>>();
         Printer(PrinterTypes printerType = PrinterTypes.Driver, int port = 9100)
@@ -149,10 +254,10 @@ namespace ModulePrinter
                 return false;
             }
         }
-        public string PrintZPLWithData(List<Tuple<string, string>> data, MyLabel label) //now i need to Draw pictures. My help https://github.com/BinaryKits/BinaryKits.Zpl https://zplprinter.azurewebsites.net/
-        {           
+        public string PrintZPLWithData(List<Tuple<string, string>> data, MyLabel label, int fontSize, string source, bool isSendImage = false) //now i need to Draw pictures. My help https://github.com/BinaryKits/BinaryKits.Zpl https://zplprinter.azurewebsites.net/
+        {
 
-            var font = new ZplFont(fontWidth: 14, fontHeight: 14);
+            var font = new ZplFont(fontWidth: fontSize, fontHeight: fontSize);
             var elements = new List<ZplElementBase>();
             ZplElementBase elementToAdd = null;
 
@@ -177,10 +282,18 @@ namespace ModulePrinter
                         case "EAN128":
                             elementToAdd = new ZplBarcode128(value, labelObject.x, labelObject.y, labelObject.height, 1);
                             break;
+                        case "НЕТ":
+                            if (isSendImage)
+                            {
+                                elements.Add(new ZplDownloadGraphics('R', value, File.ReadAllBytes(source)));
+                                elements.Add(new ZplRecallGraphic(labelObject.x, labelObject.y, 'R', value));
+                            }
+                            break;
                         default:
                             elementToAdd = new ZplTextField(value, labelObject.x, labelObject.y, font);
                             break;
                     }
+
 
                     if (elementToAdd != null)
                     {
@@ -189,9 +302,12 @@ namespace ModulePrinter
                 }
             }
 
-            var renderEngine = new ZplEngine(elements);
-            string output = renderEngine.ToZplString(new ZplRenderOptions { AddEmptyLineBeforeElementStart = false, SourcePrintDpi = 203, TargetPrintDpi = 300 });
 
+            var renderEngine = new ZplEngine(elements);
+            string output = renderEngine.ToZplString(new ZplRenderOptions { AddEmptyLineBeforeElementStart = false, SourcePrintDpi = 203, TargetPrintDpi = 250 });
+
+            Console.WriteLine("ZPL код был скопирован в буфер обмена.");
+            WindowsClipboard.SetText(output);
             return output;
         }
         public bool SendZplString(string zplString)
@@ -278,7 +394,9 @@ namespace ModulePrinter
             if (_tcpClient != null && _networkStream != null)
             {
                 _tcpClient.Dispose();
+                _tcpClient.Close();
                 _networkStream.Dispose();
+                _networkStream.Close();
             }
         }
 
@@ -287,23 +405,27 @@ namespace ModulePrinter
         {
             Printer printer = new Printer(); //параметры по умолчанию
             printer.PrinterType = PrinterTypes.ZPL;
-            //printer.PrinterIP = "192.168.10.136";
+            printer.PrinterIP = "192.168.10.136";
             //printer.Counter = 10;
-            printer.PrinterName = "Microsoft Print to PDF";
+            //printer.PrinterName = "Microsoft Print to PDF";
             //printer.PrinterName = "HP Office1";
-            //printer.PrinterName = "TSC TE210";
+            printer.PrinterName = "TSC TE210";
             printer.PrinterSizeName = "15x15";
             //printer.PrinterPort = 9100;
             printer.ConnectionTimeoutMSec = 1000;
-            printer.FolderPath = @"C:\Users\Public\Labels\3 DM + 1 EAN13.ci";
+            printer.FolderPath = @"C:\Users\Public\Labels\2message.ci";
+            //printer.ImagePath = @"C:\Users\User\Downloads\Mono.jpg";
+
 
             printer._printManager = new PrintManager(printer.FolderPath);
             MyLabel label = MyLabel.FromFile(printer.FolderPath);
+            int fontSize = MyLabel.fontSize;
+            string source = MyLabel.source;
 
             Console.WriteLine($"Выбран принтер: {printer.PrinterName}");
 
 
- 
+
             ///public static double px_in_mm = Application.OpenForms[0].DeviceDpi / 25.4; ЗДЕСЬ БЫЛ ЗАТЫК
 
 
@@ -318,7 +440,8 @@ namespace ModulePrinter
                         new Tuple<string, string>("ДатаУпак", printer.TemplateLabel.PackingDate),
                         new Tuple<string, string>("Вес", printer.TemplateLabel.Weight),
                         new Tuple<string, string>("Партия", printer.TemplateLabel.LotNumber),
-                        new Tuple<string, string>("Нет", "фальшивка")
+                        new Tuple<string, string>("Нет", "Текст"),
+                        new Tuple<string, string>("НЕТ", "Image")
                 };
 
 
@@ -343,14 +466,14 @@ namespace ModulePrinter
 
             if (printer.PrinterType == PrinterTypes.ZPL)
             {
-                string zplText = printer.PrintZPLWithData(printer._arguments, label);
-                Console.WriteLine(zplText);
+                printer.PrintZPLWithData(printer._arguments, label, fontSize, source, true);
             }
 
 
 
             //bool isConnected = await printer.Start();
-            //if (isConnected && (printer.PrinterType == PrinterTypes.ZPL || printer.PrinterType == PrinterTypes.LinxTT))
+            //string zplText = printer.PrintZPLWithData(printer._arguments, label, fontSize, true);
+            //if (isConnected && printer.PrinterType == PrinterTypes.ZPL)
             //{
             //    Console.WriteLine("Press SPACEBAR for printing to ZPL or any other key for exit\n");
             //    while (true)
@@ -362,11 +485,15 @@ namespace ModulePrinter
             //        }
             //        else
             //        {
+            //            printer.Dispose();
             //            break;
             //        }
             //    }
 
             //}
+
+
+
 
         }
     }
