@@ -295,6 +295,7 @@ namespace LabelDesignerV2
     {
         public MyPicture(int width, int height, int x, int y, string name, string specialArgument, string data) : base(width, height, x, y, name, specialArgument, data)
         {
+           
         }
         public override void draw(Graphics gr)
         {

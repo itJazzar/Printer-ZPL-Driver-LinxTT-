@@ -20,8 +20,7 @@ namespace LabelDesignerV2
 
         public int width;
         public int height;
-        public int fontSize; //?
-        public string source; //?
+    
 
         public List<MyLabelObject> objects = new List<MyLabelObject>();
 
@@ -99,7 +98,7 @@ namespace LabelDesignerV2
                             // FONT SIZE
                             curr_string = sr.ReadLine();
                             index_st = curr_string.IndexOf(' ') + 1;
-                            fontSize = Int32.Parse(curr_string.Substring(index_st));
+                            int fontSize = Int32.Parse(curr_string.Substring(index_st));
                             // FONT STYLE
                             curr_string = sr.ReadLine();
                             index_st = curr_string.IndexOf(' ') + 1;
@@ -180,7 +179,7 @@ namespace LabelDesignerV2
                             // SOURCE
                             curr_string = sr.ReadLine();
                             index_st = curr_string.IndexOf(' ') + 1;
-                            source = curr_string.Substring(index_st);
+                            string source = curr_string.Substring(index_st);
 
                             myLabel.counterPictures++;
                             MyPicture newPicture = new MyPicture(width, height, X, Y, "picture" + myLabel.counterPictures.ToString(), "НЕТ", source);
@@ -384,6 +383,13 @@ namespace LabelDesignerV2
                     tupleList.Add(new Tuple<string, string>("RECTANGLE", rectangleItem.bold.ToString()));
                     tupleList.Add(new Tuple<string, string>("LOCATION", $"{rectangleItem.x} {rectangleItem.y}"));
                     tupleList.Add(new Tuple<string, string>("SIZE", $"{rectangleItem.width} {rectangleItem.height}"));
+                }
+                else if (item is MyPicture)
+                {
+                    var pictureItem = (MyPicture)item;
+                    tupleList.Add(new Tuple<string, string>("test", pictureItem.data.ToString()));
+                    
+                    
                 }
             }
 

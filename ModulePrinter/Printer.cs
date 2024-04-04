@@ -254,10 +254,8 @@ namespace ModulePrinter
                 return false;
             }
         }
-        public string PrintZPLWithData(List<Tuple<string, string>> data, MyLabel label, int fontSize, string source, bool isSendImage = false) //now i need to Draw pictures. My help https://github.com/BinaryKits/BinaryKits.Zpl https://zplprinter.azurewebsites.net/
+        public string PrintZPLWithData(List<Tuple<string, string>> data, MyLabel label)
         {
-
-            var font = new ZplFont(fontWidth: fontSize, fontHeight: fontSize);
             var elements = new List<ZplElementBase>();
             ZplElementBase elementToAdd = null;
 
@@ -269,31 +267,40 @@ namespace ModulePrinter
                 var labelObjects = label.objects.Where(obj => obj.specialArgument == key).ToList();
                 foreach (var labelObject in labelObjects)
                 {
-                    labelObject.data = value;
-
-                    switch (key)
+                    if (labelObject is MyText)
                     {
-                        case "DataMatrix":
-                            elementToAdd = new ZplDataMatrix(value, labelObject.x, labelObject.y, 3, 200, FieldOrientation.Normal);
-                            break;
-                        case "EAN13":
-                            elementToAdd = new ZplBarcodeEan13(value, labelObject.x, labelObject.y, labelObject.height, 1);
-                            break;
-                        case "EAN128":
-                            elementToAdd = new ZplBarcode128(value, labelObject.x, labelObject.y, labelObject.height, 1);
-                            break;
-                        case "НЕТ":
-                            if (isSendImage)
-                            {
-                                elements.Add(new ZplDownloadGraphics('R', value, File.ReadAllBytes(source)));
-                                elements.Add(new ZplRecallGraphic(labelObject.x, labelObject.y, 'R', value));
-                            }
-                            break;
-                        default:
-                            elementToAdd = new ZplTextField(value, labelObject.x, labelObject.y, font);
-                            break;
+                        var textItem = (MyText)labelObject;
+                        var font = new ZplFont(fontWidth: textItem.fontSize, fontHeight: textItem.fontSize, "0"); //0 - это шрифт по умолчанию. https://habr.com/ru/articles/266677/ В статье есть картинка со шрифтами
+                        labelObject.data = value;
+                        elementToAdd = new ZplTextField(value, labelObject.x, labelObject.y, font);
                     }
-
+                    else if (labelObject is MyBarcode)
+                    {
+                        var barcodeItem = (MyBarcode)labelObject;
+                        labelObject.data = value;
+                        switch (key)
+                        {
+                            case "DataMatrix":
+                                elementToAdd = new ZplDataMatrix(value, labelObject.x, labelObject.y, 3, 200, FieldOrientation.Normal);
+                                break;
+                            case "EAN13":
+                                elementToAdd = new ZplBarcodeEan13(value, labelObject.x, labelObject.y, labelObject.height, 1);
+                                break;
+                            case "EAN128":
+                                elementToAdd = new ZplBarcode128(value, labelObject.x, labelObject.y, labelObject.height, 1);
+                                break;
+                        }
+                    }
+                    else if (labelObject is MyPicture)
+                    {
+                        var pictureItem = (MyPicture)labelObject;
+                        elements.Add(new ZplDownloadGraphics('R', value, File.ReadAllBytes(pictureItem.data)));
+                        elementToAdd = new ZplRecallGraphic(labelObject.x, labelObject.y, 'R', value);
+                    }
+                    else if (labelObject is MyRectangle)
+                    {
+                        // Обработка объекта прямоугольника
+                    }
 
                     if (elementToAdd != null)
                     {
@@ -302,14 +309,18 @@ namespace ModulePrinter
                 }
             }
 
-
             var renderEngine = new ZplEngine(elements);
             string output = renderEngine.ToZplString(new ZplRenderOptions { AddEmptyLineBeforeElementStart = false, SourcePrintDpi = 203, TargetPrintDpi = 250 });
 
-            Console.WriteLine("ZPL код был скопирован в буфер обмена.");
-            WindowsClipboard.SetText(output);
+            if (output.Length > 0)
+            {
+                Console.WriteLine("ZPL код был скопирован в буфер обмена.");
+                WindowsClipboard.SetText(output);
+            }
+
             return output;
         }
+
         public bool SendZplString(string zplString)
         {
             if (_tcpClient == null || !_tcpClient.Connected || _networkStream == null)
@@ -407,20 +418,18 @@ namespace ModulePrinter
             printer.PrinterType = PrinterTypes.ZPL;
             printer.PrinterIP = "192.168.10.136";
             //printer.Counter = 10;
-            //printer.PrinterName = "Microsoft Print to PDF";
+            printer.PrinterName = "Microsoft Print to PDF";
             //printer.PrinterName = "HP Office1";
-            printer.PrinterName = "TSC TE210";
+            //printer.PrinterName = "TSC TE210";
             printer.PrinterSizeName = "15x15";
             //printer.PrinterPort = 9100;
             printer.ConnectionTimeoutMSec = 1000;
-            printer.FolderPath = @"C:\Users\Public\Labels\2message.ci";
+            printer.FolderPath = @"C:\Users\Public\Labels\LabelsTest\этикетка.ci";
             //printer.ImagePath = @"C:\Users\User\Downloads\Mono.jpg";
 
 
             printer._printManager = new PrintManager(printer.FolderPath);
             MyLabel label = MyLabel.FromFile(printer.FolderPath);
-            int fontSize = MyLabel.fontSize;
-            string source = MyLabel.source;
 
             Console.WriteLine($"Выбран принтер: {printer.PrinterName}");
 
@@ -466,7 +475,7 @@ namespace ModulePrinter
 
             if (printer.PrinterType == PrinterTypes.ZPL)
             {
-                printer.PrintZPLWithData(printer._arguments, label, fontSize, source, true);
+                printer.PrintZPLWithData(printer._arguments, label);
             }
 
 
