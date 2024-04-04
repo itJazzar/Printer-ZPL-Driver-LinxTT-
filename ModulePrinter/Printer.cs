@@ -23,7 +23,10 @@ using System.Runtime.InteropServices;
 using System.ComponentModel;
 using System.Threading;
 using System.Windows.Forms;
-
+using Newtonsoft.Json.Linq;
+using Neodynamic.SDK.ZPLPrinter;
+using PdfiumViewer;
+using System.Drawing.Imaging;
 
 namespace ModulePrinter
 {
@@ -209,6 +212,20 @@ namespace ModulePrinter
                 Console.WriteLine($"Размер бумаги: {paperSize.PaperName}, Ширина: {paperSize.Width}, Высота: {paperSize.Height}, Тип: {paperSize.Kind}");
             }
         }
+        public static void ConvertPdfToImageFormat(string pdfFilePath, string outputDirectory, ImageFormat imageFormat)
+        {
+            using (var pdfDocument = PdfDocument.Load(pdfFilePath)) //error
+            {
+                for (int i = 0; i < pdfDocument.PageCount; i++)
+                {
+                    using (var bitmap = pdfDocument.Render(i, 300, 300, true))
+                    {
+                        string outputPath = Path.Combine(outputDirectory, $"page_{i + 1}.jpg");
+                        bitmap.Save(outputPath, imageFormat);
+                    }
+                }
+            }
+        }
         public async Task<bool> Start()
         {
             if (_tcpClient != null && _tcpClient.Connected)
@@ -271,8 +288,13 @@ namespace ModulePrinter
                     {
                         var textItem = (MyText)labelObject;
                         var font = new ZplFont(fontWidth: textItem.fontSize, fontHeight: textItem.fontSize, "0"); //0 - это шрифт по умолчанию. https://habr.com/ru/articles/266677/ В статье есть картинка со шрифтами
-                        labelObject.data = value;
-                        elementToAdd = new ZplTextField(value, labelObject.x, labelObject.y, font);
+                        if (key == "Нет")
+                            elementToAdd = new ZplTextField(labelObject.data, labelObject.x, labelObject.y, font);
+                        else
+                        {
+                            labelObject.data = value;
+                            elementToAdd = new ZplTextField(value, labelObject.x, labelObject.y, font);
+                        }
                     }
                     else if (labelObject is MyBarcode)
                     {
@@ -281,7 +303,7 @@ namespace ModulePrinter
                         switch (key)
                         {
                             case "DataMatrix":
-                                elementToAdd = new ZplDataMatrix(value, labelObject.x, labelObject.y, 3, 200, FieldOrientation.Normal);
+                                elementToAdd = new ZplDataMatrix(value, labelObject.x, labelObject.y, 2, 200, FieldOrientation.Normal);
                                 break;
                             case "EAN13":
                                 elementToAdd = new ZplBarcodeEan13(value, labelObject.x, labelObject.y, labelObject.height, 1);
@@ -320,7 +342,30 @@ namespace ModulePrinter
 
             return output;
         }
+        private string PrintZPLImageWithData(string imagePath)
+        {
+            var elements = new List<ZplElementBase>();
+            ZplElementBase elementToAdd = null;
 
+            elements.Add(new ZplDownloadGraphics('R', "Image", File.ReadAllBytes(imagePath)));
+            elementToAdd = new ZplRecallGraphic(1, 1, 'R', "Image");
+
+            if (elementToAdd != null)
+            {
+                elements.Add(elementToAdd);
+            }
+
+            var renderEngine = new ZplEngine(elements);
+            string output = renderEngine.ToZplString(new ZplRenderOptions { AddEmptyLineBeforeElementStart = false, SourcePrintDpi = 203, TargetPrintDpi = 300 });
+
+            if (output.Length > 0)
+            {
+                Console.WriteLine("ZPL код был скопирован в буфер обмена.");
+                WindowsClipboard.SetText(output);
+            }
+
+            return output;
+        }
         public bool SendZplString(string zplString)
         {
             if (_tcpClient == null || !_tcpClient.Connected || _networkStream == null)
@@ -344,7 +389,7 @@ namespace ModulePrinter
                 return false;
             }
         }
-        private void PrintWithDriver(Printer printer, List<Tuple<string, string>> arguments, PrintManager printManager)
+        private void PrintWithDriver(Printer printer, List<Tuple<string, string>> arguments, PrintManager printManager, float offsetX, float offsetY)
         {
             PrintDocument printCode = new PrintDocument
             {
@@ -385,16 +430,20 @@ namespace ModulePrinter
             //    Console.WriteLine($"Заданный размер бумаги {printer.PrinterSizeName} у принтера {printer.PrinterName} не найден.");
 
             // Привязка обработчика события печати
-            printCode.PrintPage += (s, e) => PrintPageHandler(s, e, arguments, printer, selectedPaperSize, printCode);
+            printCode.PrintPage += (s, e) => PrintPageHandler(s, e, arguments, printer, selectedPaperSize, printCode, offsetX, offsetY);
 
             printCode.Print();
-            Console.WriteLine("Печать успешно завершена");
         }
-        private void PrintPageHandler(object sender, PrintPageEventArgs e, List<Tuple<string, string>> arguments, Printer printer, PaperSize selectedPaperSize, PrintDocument printCode)
+        private void PrintPageHandler(object sender, PrintPageEventArgs e, List<Tuple<string, string>> arguments, Printer printer, PaperSize selectedPaperSize, PrintDocument printCode, float dx, float dy)
         {
+            
+            e.Graphics.TranslateTransform(dx, dy);
+
+
             printer._arguments = arguments;
-            printCode.DefaultPageSettings.PaperSize = selectedPaperSize;
+            //printCode.DefaultPageSettings.PaperSize = selectedPaperSize;
             printer._printManager.PrintWithData(arguments, e.Graphics);
+            Console.WriteLine("Печать успешно завершена");
         }
         public void PrintDataToLinxTT()
         {
@@ -415,7 +464,7 @@ namespace ModulePrinter
         async static Task Main(string[] args)
         {
             Printer printer = new Printer(); //параметры по умолчанию
-            printer.PrinterType = PrinterTypes.ZPL;
+            printer.PrinterType = PrinterTypes.Driver;
             printer.PrinterIP = "192.168.10.136";
             //printer.Counter = 10;
             printer.PrinterName = "Microsoft Print to PDF";
@@ -424,7 +473,7 @@ namespace ModulePrinter
             printer.PrinterSizeName = "15x15";
             //printer.PrinterPort = 9100;
             printer.ConnectionTimeoutMSec = 1000;
-            printer.FolderPath = @"C:\Users\Public\Labels\LabelsTest\этикетка.ci";
+            printer.FolderPath = @"C:\Users\Public\Labels\Max.ci";
             //printer.ImagePath = @"C:\Users\User\Downloads\Mono.jpg";
 
 
@@ -434,12 +483,15 @@ namespace ModulePrinter
             Console.WriteLine($"Выбран принтер: {printer.PrinterName}");
 
 
+            //string convert = PDFtoZPL.Conversion.ConvertBitmap(@"C:\Users\Public\Labels\LabelsTest\Порционка.pdf");
+            //WindowsClipboard.SetText(convert);
+
 
             ///public static double px_in_mm = Application.OpenForms[0].DeviceDpi / 25.4; ЗДЕСЬ БЫЛ ЗАТЫК
 
 
 
-            printer._arguments = new List<Tuple<string, string>>
+            printer._arguments = new List<Tuple<string, string>>           //Задание шаблона
                 {
                         new Tuple<string, string>("DataMatrix", printer.TemplateLabel.DataMatrix),
                         new Tuple<string, string>("EAN128", printer.TemplateLabel.EAN128),
@@ -449,15 +501,17 @@ namespace ModulePrinter
                         new Tuple<string, string>("ДатаУпак", printer.TemplateLabel.PackingDate),
                         new Tuple<string, string>("Вес", printer.TemplateLabel.Weight),
                         new Tuple<string, string>("Партия", printer.TemplateLabel.LotNumber),
-                        new Tuple<string, string>("Нет", "Текст"),
+                        new Tuple<string, string>("Нет", "Здесь останется текст без спец аргумента из шаблона"),
                         new Tuple<string, string>("НЕТ", "Image")
                 };
 
 
             if (printer.PrinterType == PrinterTypes.Driver)
             {
-                printer.PrintWithDriver(printer, printer._arguments, printer._printManager);
+                printer.PrintWithDriver(printer, printer._arguments, printer._printManager, 100, 900);
             }
+
+            //ConvertPdfToImageFormat(@"C:\Users\User\Documents\Trash\BigLabel.pdf", @"C:\Users\User\Documents\Trash\", ImageFormat.Jpeg);
 
             //Console.WriteLine("Press SPACEBAR for printing to Driver or any other key for exit\n");
             //while (true)
@@ -478,6 +532,10 @@ namespace ModulePrinter
                 printer.PrintZPLWithData(printer._arguments, label);
             }
 
+            if (printer.PrinterType == PrinterTypes.LinxTT)
+            {
+                printer.PrintZPLImageWithData(@"C:\Users\User\Downloads\label(7).png");
+            }
 
 
             //bool isConnected = await printer.Start();
