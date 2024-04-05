@@ -324,6 +324,7 @@ namespace LabelDesignerV2
 
         public void draw(Graphics gr)
         {
+            gr.FillRectangle(Brushes.White, 0, 0, (float)(width * px_in_mm), (float)(height * px_in_mm ));
             foreach (MyLabelObject obj in objects)
             {
                 obj.draw(gr);
